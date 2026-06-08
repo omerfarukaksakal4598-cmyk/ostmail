@@ -2,11 +2,10 @@ import streamlit as st
 import sqlite3
 import hashlib
 
-# 1. VERİTABANI AYARLARI (Hesapları ve Mailleri Saklamak İçin)
-conn = sqlite3.connect("ostmail.db", check_same_thread=False)
+# 1. VERİBATANI AYARLARI
+conn = sqlite3.connect("ostmail_v3.db", check_same_thread=False)
 cursor = conn.cursor()
 
-# Tabloları oluşturma
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS kullanicilar (
     eposta TEXT PRIMARY KEY,
@@ -20,6 +19,7 @@ CREATE TABLE IF NOT EXISTS mailler (
     alici TEXT,
     baslik TEXT,
     icerik TEXT,
+    resim_url TEXT,
     tarih TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """)
@@ -29,139 +29,172 @@ conn.commit()
 def sifre_sifrele(sifre):
     return hashlib.sha256(sifre.encode()).hexdigest()
 
-# 3. SAYFA TASARIMI
-st.set_page_config(page_title="Östmail - Yeni Nesil E-Posta", layout="wide")
+# Sayfa Ayarları
+st.set_page_config(page_title="Östmail Premium", layout="wide")
 
+# Şık Karanlık Tema Tasarımı
 st.markdown("""
     <style>
-    .stApp { background-color: #111827; color: #f3f4f6; }
-    .sidebar .sidebar-content { background-color: #1f2937; }
-    .mail-box { background-color: #1f2937; padding: 15px; border-radius: 10px; border-left: 5px solid #ef4444; margin-bottom: 15px; }
-    .mail-header { font-weight: bold; color: #ef4444; font-size: 16px; }
-    .mail-meta { color: #9ca3af; font-size: 12px; }
-    .mail-body { margin-top: 10px; color: #e5e7eb; }
+    .stApp { background-color: #0f172a; color: #f8fafc; }
+    .mail-card { background-color: #1e293b; padding: 15px; border-radius: 10px; border-left: 5px solid #38bdf8; margin-bottom: 10px; cursor: pointer; transition: 0.3s; }
+    .mail-card:hover { background-color: #334155; }
+    .mail-title { font-weight: bold; color: #38bdf8; font-size: 16px; }
+    .mail-meta { color: #94a3b8; font-size: 12px; }
+    .mail-open-box { background-color: #1e293b; padding: 25px; border-radius: 12px; border: 1px solid #475569; margin-top: 15px; }
+    .stButton>button { background-color: #0284c7 !important; color: white !important; font-weight: bold !important; }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<h1 style='color: #ef4444; text-align: center;'>📧 ÖSTMAIL</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #9ca3af;'>@ost.com Uzantılı Güvenli E-Posta Platformu</p>", unsafe_allow_html=True)
+st.markdown("<h1 style='color: #38bdf8; text-align: center;'>📧 ÖSTMAIL PREMIUM</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #94a3b8;'>Gelişmiş @ost.com E-Posta Servisi</p>", unsafe_allow_html=True)
 st.write("---")
 
-# Giriş Kontrolü
-if "giris_yapan_kullanici" not in st.session_state:
-    st.session_state.giris_yapan_kullanici = None
+# 3. BENİ HATIRLA ÖZELLİĞİ
+if "giris_yapan_kullanici" not in st.query_params:
+    current_user = None
+else:
+    current_user = st.query_params["giris_yapan_kullanici"]
 
 # --- GİRİŞ / KAYIT EKRANI ---
-if st.session_state.giris_yapan_kullanici is None:
+if current_user is None:
     sekme1, sekme2 = st.tabs(["🔐 Giriş Yap", "📝 Hesap Oluştur"])
     
     with sekme1:
-        st.subheader("Östmail Hesabınla Giriş Yap")
-        giris_ad = st.text_input("Kullanıcı Adı (Örn: omer)", key="g_ad")
+        st.subheader("Hesabınla Giriş Yap")
+        # Kullanıcıya hatırlatma metni ekledik
+        giris_ad = st.text_input("E-Posta Adresiniz (Örn: omer@ost.com)", key="g_ad").lower().strip()
         giris_sifre = st.text_input("Şifre", type="password", key="g_sifre")
         
         if st.button("Giriş Yap", use_container_width=True):
-            tam_eposta = f"{giris_ad.lower().strip()}@ost.com"
-            sifreli_sifre = sifre_sifrele(giris_sifre)
-            
-            cursor.execute("SELECT * FROM kullanicilar WHERE eposta=? AND sifre=?", (tam_eposta, sifreli_sifre))
-            kullanici = cursor.fetchone()
-            
-            if kullanici:
-                st.session_state.giris_yapan_kullanici = tam_eposta
-                st.success(f"Başarıyla giriş yapıldı! Hoş geldin, {tam_eposta}")
-                st.rerun()
+            if giris_ad and giris_sifre:
+                # KRİTİK KONTROL: @ost.com yazmak zorunlu hale getirildi
+                if not giris_ad.endswith("@ost.com"):
+                    st.error("❌ Hata: Giriş yaparken e-posta adresinizin sonuna '@ost.com' yazmak zorunludur! (Örn: omer@ost.com)")
+                else:
+                    sifreli_sifre = sifre_sifrele(giris_sifre)
+                    cursor.execute("SELECT * FROM kullanicilar WHERE eposta=? AND sifre=?", (giris_ad, sifreli_sifre))
+                    if cursor.fetchone():
+                        st.query_params["giris_yapan_kullanici"] = giris_ad
+                        st.success("Giriş başarılı! Yönlendiriliyorsunuz...")
+                        st.rerun()
+                    else:
+                        st.error("Kullanıcı adı veya şifre hatalı!")
             else:
-                st.error("Kullanıcı adı veya şifre hatalı!")
+                st.error("Lütfen tüm alanları doldurun!")
                 
     with sekme2:
         st.subheader("Yeni @ost.com Adresi Al")
-        yeni_ad = st.text_input("İstediğin Kullanıcı Adı (Örn: ahmet)", key="y_ad")
-        yeni_sifre = st.text_input("Şifre Belirle", type="password", key="y_sifre")
+        yeni_ad = st.text_input("İstediğin Kullanıcı Adı (Sadece adınızı yazın, örn: ahmet)", key="y_ad").lower().strip()
+        yeni_sifre = st.text_input("Şifre Belirle (En az 6 haneli)", type="password", key="y_sifre")
         
         if st.button("Hesabımı Oluştur", use_container_width=True):
-            if yeni_ad and yeni_sifre:
-                tam_eposta = f"{yeni_ad.lower().strip()}@ost.com"
+            if not yeni_ad or not yeni_sifre:
+                st.error("Lütfen tüm alanları doldurun!")
+            elif len(yeni_sifre) < 6:
+                st.error("❌ Şifreniz çok kısa! Güvenliğiniz için şifre en az 6 haneli olmalıdır.")
+            else:
+                # Hesap açarken eğer kullanıcı zaten @ost.com yazdıysa temizliyoruz, yazmadıysa biz ekliyoruz
+                temiz_ad = yeni_ad.replace("@ost.com", "")
+                tam_eposta = f"{temiz_ad}@ost.com"
                 sifreli_sifre = sifre_sifrele(yeni_sifre)
                 
                 try:
                     cursor.execute("INSERT INTO kullanicilar (eposta, sifre) VALUES (?, ?)", (tam_eposta, sifreli_sifre))
                     conn.commit()
-                    st.success(f"Hesabın başarıyla açıldı! Artık adresin: {tam_eposta}. Giriş yapabilirsin.")
+                    st.success(f"🎉 Tebrikler! {tam_eposta} başarıyla açıldı. Giriş sekmesinden tam adresinizle bağlanabilirsiniz.")
                 except sqlite3.IntegrityError:
-                    st.error("Bu kullanıcı adı daha önce alınmış! Başka bir tane dene.")
-            else:
-                st.error("Lütfen tüm alanları doldur!")
+                    st.error("Bu kullanıcı adı kapılmış! Başka bir tane dene.")
 
-# --- ANA MAİL ARAYÜZÜ ---
+# --- ANA UYGULAMA ARAYÜZÜ ---
 else:
-    mevcut_kullanici = st.session_state.giris_yapan_kullanici
+    st.sidebar.markdown(f"👤 **Aktif Hesap:** \n`{current_user}`")
+    menu = st.sidebar.radio("Menü Menüsü", ["📥 Gelen Kutusu", "✏️ Yeni Mail Yaz", "📤 Giden Kutusu"])
     
-    # Sol Menü (Sidebar)
-    st.sidebar.markdown(f"👤 **Hesap:** {mevcut_kullanici}")
-    menu = st.sidebar.radio("Menü", ["📥 Gelen Kutusu", "📤 Giden Kutusu", "✏️ Yeni Mail Yaz"])
-    
-    if st.sidebar.button("🚪 Çıkış Yap"):
-        st.session_state.giris_yapan_kullanici = None
+    if st.sidebar.button("🚪 Oturumu Kapat"):
+        st.query_params.clear()
         st.rerun()
         
-    # --- YENİ MAİL YAZMA ---
+    # --- YENİ MAİL YAZMA (RESİM DESTEKLİ) ---
     if menu == "✏️ Yeni Mail Yaz":
-        st.header("✏️ Yeni E-Posta Gönder")
-        alici_eposta = st.text_input("Alıcı E-Posta Adresi (Örn: ahmet@ost.com)")
-        mail_baslik = st.text_input("Konu / Başlık")
-        mail_icerik = st.text_area("Mesajınız", height=200)
+        st.header("✏️ Yeni E-Posta Oluştur")
+        alici = st.text_input("Alıcı Adresi (Örn: ahmet@ost.com)").lower().strip()
+        baslik = st.text_input("Konu")
+        resim_url = st.text_input("Resim URL'si (İsteğe bağlı - Görsel linki yapıştırın)")
+        icerik = st.text_area("Mesaj içeriği", height=150)
         
-        if st.button("Gönder", use_container_width=False):
-            if alici_eposta and mail_baslik and mail_icerik:
-                # Alıcı var mı kontrol et
-                cursor.execute("SELECT * FROM kullanicilar WHERE eposta=?", (alici_eposta.lower().strip(),))
-                if cursor.fetchone():
-                    cursor.execute(
-                        "INSERT INTO mailler (gonderen, alici, baslik, icerik) VALUES (?, ?, ?, ?)",
-                        (mevcut_kullanici, alici_eposta.lower().strip(), mail_baslik, mail_icerik)
-                    )
-                    conn.commit()
-                    st.success(f"Mail başarıyla {alici_eposta} adresine gönderildi!")
+        if st.button("Zarfa Koy ve Gönder"):
+            if alici and baslik and icerik:
+                if not alici.endswith("@ost.com"):
+                    st.error("❌ Hata: Alıcı adresi mutlaka '@ost.com' ile bitmelidir!")
                 else:
-                    st.error("Böyle bir Östmail kullanıcısı bulunamadı! Adresi doğru yazdığından emin ol.")
+                    cursor.execute("SELECT * FROM kullanicilar WHERE eposta=?", (alici,))
+                    if cursor.fetchone():
+                        cursor.execute(
+                            "INSERT INTO mailler (gonderen, alici, baslik, icerik, resim_url) VALUES (?, ?, ?, ?, ?)",
+                            (current_user, alici, baslik, icerik, resim_url)
+                        )
+                        conn.commit()
+                        st.success(f"📬 Mail başarıyla {alici} adresine uçuruldu!")
+                    else:
+                        st.error("Böyle bir Östmail kullanıcısı sistemde kayıtlı değil!")
             else:
-                st.error("Lütfen boş alan bırakma!")
-                
+                st.error("Lütfen Alıcı, Başlık ve İçerik alanlarını boş bırakmayın!")
+
     # --- GELEN KUTUSU ---
     elif menu == "📥 Gelen Kutusu":
         st.header("📥 Gelen Kutusu")
-        cursor.execute("SELECT gonderen, baslik, icerik, tarih FROM mailler WHERE alici=? ORDER BY tarih DESC", (mevcut_kullanici,))
-        gelen_mailler = cursor.fetchall()
+        cursor.execute("SELECT id, gonderen, baslik, icerik, resim_url, tarih FROM mailler WHERE alici=? ORDER BY tarih DESC", (current_user,))
+        gelenler = cursor.fetchall()
         
-        if not gelen_mailler:
-            st.info("Gelen kutunuz boş.")
+        if not gelenler:
+            st.info("Gelen kutunuzda henüz bir mesaj yok.")
         else:
-            for gonderen, baslik, icerik, tarih in gelen_mailler:
+            mail_sozlugu = {}
+            secenekler = []
+            
+            for m_id, gonderen, baslik, icerik, r_url, tarih in gelenler:
+                gorunum_metni = f"✉️ {gonderen} - {baslik} ({tarih[:16]})"
+                secenekler.append(gorunum_metni)
+                mail_sozlugu[gorunum_metni] = {"gonderen": gonderen, "baslik": baslik, "icerik": icerik, "resim": r_url, "tarih": tarih}
+            
+            st.markdown("👇 **Açmak ve okumak istediğiniz mesajı seçin:**")
+            secilen_mail = st.selectbox("Mesaj Seçici", secenekler, label_visibility="collapsed")
+            
+            if secilen_mail:
+                m = mail_sozlugu[secilen_mail]
                 st.markdown(f"""
-                <div class='mail-box'>
-                    <div class='mail-header'>Kimden: {gonderen}</div>
-                    <div style='font-weight: bold; margin-top:5px;'>Konu: {baslik}</div>
-                    <div class='mail-meta'>Tarih: {tarih}</div>
-                    <div class='mail-body'>{icerik}</div>
+                <div class='mail-open-box'>
+                    <div style='font-size: 20px; font-weight: bold; color: #38bdf8;'>{m['baslik']}</div>
+                    <div class='mail-meta'><b>Kimden:</b> {m['gonderen']} | <b>Tarih:</b> {m['tarih']}</div>
+                    <hr style='border-color: #475569;'>
+                    <div style='font-size: 16px; line-height: 1.6; white-space: pre-wrap;'>{m['icerik']}</div>
                 </div>
                 """, unsafe_allow_html=True)
                 
+                if m['resim'] and m['resim'].strip() != "":
+                    st.markdown("<br>🖼️ **Gelen Ekli Resim:**", unsafe_allow_html=True)
+                    try:
+                        st.image(m['resim'], use_container_width=True)
+                    except:
+                        st.warning("Gönderilen resim linki kırık veya geçersiz olduğundan yüklenemedi.")
+
     # --- GİDEN KUTUSU ---
     elif menu == "📤 Giden Kutusu":
         st.header("📤 Gönderilen Mailler")
-        cursor.execute("SELECT alici, baslik, icerik, tarih FROM mailler WHERE gonderen=? ORDER BY tarih DESC", (mevcut_kullanici,))
-        giden_mailler = cursor.fetchall()
+        cursor.execute("SELECT alici, baslik, icerik, resim_url, tarih FROM mailler WHERE gonderen=? ORDER BY tarih DESC", (current_user,))
+        gidenler = cursor.fetchall()
         
-        if not giden_mailler:
-            st.info("Henüz hiç mail göndermediniz.")
+        if not gidenler:
+            st.info("Henüz kimseye mail göndermediniz.")
         else:
-            for alici, baslik, icerik, tarih in giden_mailler:
+            for alici, baslik, icerik, r_url, tarih in gidenler:
                 st.markdown(f"""
-                <div class='mail-box' style='border-left: 5px solid #3b82f6;'>
-                    <div class='mail-header' style='color: #3b82f6;'>Kime: {alici}</div>
-                    <div style='font-weight: bold; margin-top:5px;'>Konu: {baslik}</div>
+                <div class='mail-card' style='border-left: 5px solid #a855f7;'>
+                    <div class='mail-title' style='color: #a855f7;'>Kime: {alici}</div>
+                    <div style='font-weight: bold;'>Konu: {baslik}</div>
                     <div class='mail-meta'>Tarih: {tarih}</div>
-                    <div class='mail-body'>{icerik}</div>
+                    <div style='margin-top: 10px;'>{icerik}</div>
                 </div>
                 """, unsafe_allow_html=True)
+                if r_url:
+                    st.caption("🖼️ Resim eki gönderildi.")
