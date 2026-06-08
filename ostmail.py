@@ -3,7 +3,7 @@ import sqlite3
 import hashlib
 
 # 1. VERİBATANI AYARLARI
-conn = sqlite3.connect("ostmail_v3.db", check_same_thread=False)
+conn = sqlite3.connect("ostmail_v4.db", check_same_thread=False)
 cursor = conn.cursor()
 
 cursor.execute("""
@@ -61,15 +61,14 @@ if current_user is None:
     
     with sekme1:
         st.subheader("Hesabınla Giriş Yap")
-        # Kullanıcıya hatırlatma metni ekledik
-        giris_ad = st.text_input("E-Posta Adresiniz (Örn: omer@ost.com)", key="g_ad").lower().strip()
+        # Örnek yazısı kaldırıldı
+        giris_ad = st.text_input("E-Posta Adresiniz", key="g_ad").lower().strip()
         giris_sifre = st.text_input("Şifre", type="password", key="g_sifre")
         
         if st.button("Giriş Yap", use_container_width=True):
             if giris_ad and giris_sifre:
-                # KRİTİK KONTROL: @ost.com yazmak zorunlu hale getirildi
                 if not giris_ad.endswith("@ost.com"):
-                    st.error("❌ Hata: Giriş yaparken e-posta adresinizin sonuna '@ost.com' yazmak zorunludur! (Örn: omer@ost.com)")
+                    st.error("❌ Hata: Giriş yaparken e-posta adresinizin sonuna '@ost.com' yazmak zorunludur!")
                 else:
                     sifreli_sifre = sifre_sifrele(giris_sifre)
                     cursor.execute("SELECT * FROM kullanicilar WHERE eposta=? AND sifre=?", (giris_ad, sifreli_sifre))
@@ -84,7 +83,8 @@ if current_user is None:
                 
     with sekme2:
         st.subheader("Yeni @ost.com Adresi Al")
-        yeni_ad = st.text_input("İstediğin Kullanıcı Adı (Sadece adınızı yazın, örn: ahmet)", key="y_ad").lower().strip()
+        # Örnek yazısı kaldırıldı
+        yeni_ad = st.text_input("İstediğin Kullanıcı Adı", key="y_ad").lower().strip()
         yeni_sifre = st.text_input("Şifre Belirle (En az 6 haneli)", type="password", key="y_sifre")
         
         if st.button("Hesabımı Oluştur", use_container_width=True):
@@ -93,7 +93,6 @@ if current_user is None:
             elif len(yeni_sifre) < 6:
                 st.error("❌ Şifreniz çok kısa! Güvenliğiniz için şifre en az 6 haneli olmalıdır.")
             else:
-                # Hesap açarken eğer kullanıcı zaten @ost.com yazdıysa temizliyoruz, yazmadıysa biz ekliyoruz
                 temiz_ad = yeni_ad.replace("@ost.com", "")
                 tam_eposta = f"{temiz_ad}@ost.com"
                 sifreli_sifre = sifre_sifrele(yeni_sifre)
@@ -101,7 +100,7 @@ if current_user is None:
                 try:
                     cursor.execute("INSERT INTO kullanicilar (eposta, sifre) VALUES (?, ?)", (tam_eposta, sifreli_sifre))
                     conn.commit()
-                    st.success(f"🎉 Tebrikler! {tam_eposta} başarıyla açıldı. Giriş sekmesinden tam adresinizle bağlanabilirsiniz.")
+                    st.success(f"🎉 Tebrikler! {tam_eposta} başarıyla açıldı. Giriş sekmesinden bağlanabilirsiniz.")
                 except sqlite3.IntegrityError:
                     st.error("Bu kullanıcı adı kapılmış! Başka bir tane dene.")
 
@@ -117,9 +116,10 @@ else:
     # --- YENİ MAİL YAZMA (RESİM DESTEKLİ) ---
     if menu == "✏️ Yeni Mail Yaz":
         st.header("✏️ Yeni E-Posta Oluştur")
-        alici = st.text_input("Alıcı Adresi (Örn: ahmet@ost.com)").lower().strip()
+        # Örnek yazısı kaldırıldı
+        alici = st.text_input("Alıcı Adresi").lower().strip()
         baslik = st.text_input("Konu")
-        resim_url = st.text_input("Resim URL'si (İsteğe bağlı - Görsel linki yapıştırın)")
+        resim_url = st.text_input("Resim URL'si (İsteğe bağlı)")
         icerik = st.text_area("Mesaj içeriği", height=150)
         
         if st.button("Zarfa Koy ve Gönder"):
@@ -134,7 +134,7 @@ else:
                             (current_user, alici, baslik, icerik, resim_url)
                         )
                         conn.commit()
-                        st.success(f"📬 Mail başarıyla {alici} adresine uçuruldu!")
+                        st.success(f"📬 Mail başarıyla gönderildi!")
                     else:
                         st.error("Böyle bir Östmail kullanıcısı sistemde kayıtlı değil!")
             else:
