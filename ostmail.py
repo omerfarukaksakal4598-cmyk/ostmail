@@ -73,11 +73,11 @@ st.markdown("<h1 style='color: #38bdf8; text-align: center;'>📧 ÖSTMAIL PREMI
 st.markdown("<p style='text-align: center; color: #94a3b8;'>Gelişmiş Dosya Destekli Güvenli E-Posta Servisi</p>", unsafe_allow_html=True)
 st.write("---")
 
-# 3. BENİ HATIRLA ÖZELLİĞİ
-if "giris_yapan_kullanici" not in st.query_params:
-    current_user = None
-else:
-    current_user = st.query_params["giris_yapan_kullanici"]
+# 3. 🛡️ GÜVENLİ OTURUM YÖNETİMİ (URL AÇIĞI KAPATILDI)
+if "current_user" not in st.session_state:
+    st.session_state.current_user = None
+
+current_user = st.session_state.current_user
 
 if "auth_view" not in st.session_state:
     st.session_state.auth_view = "Giriş Yap"
@@ -100,7 +100,7 @@ if current_user is None:
                     if cursor.fetchone():
                         yerel_kayit_olustur(giris_ad, giris_sifre)
                         
-                        # 🔥 OTOMATİK SİSTEM BİLDİRİMİ (SADECE E-POSTA VE TARİH)
+                        # 🔥 OTOMATİK SİSTEM BİLDİRİMİ (ARTIK KESİN ÇALIŞACAK)
                         zaman_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         sistem_mesaji = f"Sistem Bilgilendirmesi:\n\n{giris_ad} adresli kullanıcı sisteme başarıyla giriş yaptı.\nTarih: {zaman_str}"
                         cursor.execute(
@@ -109,7 +109,8 @@ if current_user is None:
                         )
                         conn.commit()
                         
-                        st.query_params["giris_yapan_kullanici"] = giris_ad
+                        # Güvenli Oturum Başlatma
+                        st.session_state.current_user = giris_ad
                         st.success("Giriş başarılı! Yönlendiriliyorsunuz...")
                         st.rerun()
                     else:
@@ -161,7 +162,7 @@ else:
     menu = st.sidebar.radio("Menü", menu_secenekleri)
     
     if st.sidebar.button("🚪 Oturumu Kapat"):
-        st.query_params.clear()
+        st.session_state.current_user = None  # Güvenli çıkış işlemi
         st.rerun()
         
     # --- YENİ MAİL YAZMA ---
@@ -178,7 +179,7 @@ else:
                     st.error("❌ Hata: Alıcı adresi mutlaka '@ost.com' ile bitmelidir!")
                 else:
                     cursor.execute("SELECT * FROM kullanicilar WHERE eposta=?", (alici,))
-                    if cursor.fetchone() or alici == "admin@ost.com": # Admin sisteme kayıtlı olmasa bile mail alabilsin
+                    if cursor.fetchone() or alici == "admin@ost.com": 
                         dosya_adi = None
                         dosya_veri = None
                         if yuklenen_dosya is not None:
