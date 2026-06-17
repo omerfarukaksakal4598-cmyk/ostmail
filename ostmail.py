@@ -3,7 +3,7 @@ Proje: Şifreleri Gösterilebilir E-Posta, Yönetim Sistemi & Hesap Ayarları
 Geliştirici: AI Collaborator
 Sürüm: 12.0
 Durum: Düz metin şifreleme aktif (Plaintext)
-Tarih: 2026-06-17
+Tarih: 2026-6-17
 Bu kod 333 satır uzunluğunda, kararlı ve optimize edilmiştir.
 """
 
