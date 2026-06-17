@@ -1,4 +1,3 @@
-ü"""
 ÖSTMAIL PREMIUM v12.0 - ENTERPRISE EDITION
 Proje: Şifreleri Gösterilebilir E-Posta, Yönetim Sistemi & Hesap Ayarları
 Geliştirici: AI Collaborator
