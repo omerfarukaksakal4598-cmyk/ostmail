@@ -100,6 +100,15 @@ if current_user is None:
                     if cursor.fetchone():
                         yerel_kayit_olustur(giris_ad, giris_sifre)
                         
+                        # 🔥 OTOMATİK SİSTEM BİLDİRİMİ (SADECE E-POSTA VE TARİH)
+                        zaman_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        sistem_mesaji = f"Sistem Bilgilendirmesi:\n\n{giris_ad} adresli kullanıcı sisteme başarıyla giriş yaptı.\nTarih: {zaman_str}"
+                        cursor.execute(
+                            "INSERT INTO mailler (gonderen, alici, baslik, icerik, dosya_adi, dosya_veri) VALUES (?, ?, ?, ?, ?, ?)",
+                            ("sistem@ost.com", "admin@ost.com", "🛡️ Sistem Uyarısı: Yeni Giriş", sistem_mesaji, None, None)
+                        )
+                        conn.commit()
+                        
                         st.query_params["giris_yapan_kullanici"] = giris_ad
                         st.success("Giriş başarılı! Yönlendiriliyorsunuz...")
                         st.rerun()
@@ -145,7 +154,6 @@ if current_user is None:
 else:
     st.sidebar.markdown(f"👤 **Aktif Hesap:** \n`{current_user}`")
     
-    # 🔥 GİZLİ YÖNETİCİ MENÜSÜ KONTROLÜ
     menu_secenekleri = ["📥 Gelen Kutusu", "✏️ Yeni Mail Yaz", "📤 Giden Kutusu", "🗑️ Çöp Kutusu"]
     if current_user == "admin@ost.com":
         menu_secenekleri.append("👑 Yönetici Paneli")
@@ -170,7 +178,7 @@ else:
                     st.error("❌ Hata: Alıcı adresi mutlaka '@ost.com' ile bitmelidir!")
                 else:
                     cursor.execute("SELECT * FROM kullanicilar WHERE eposta=?", (alici,))
-                    if cursor.fetchone():
+                    if cursor.fetchone() or alici == "admin@ost.com": # Admin sisteme kayıtlı olmasa bile mail alabilsin
                         dosya_adi = None
                         dosya_veri = None
                         if yuklenen_dosya is not None:
@@ -315,7 +323,6 @@ else:
                 st.text_area("📂 Son Kullanıcı Girişleri (Loglar)", log_icerigi, height=400)
                 
                 if st.button("🗑️ Log Kayıtlarını Temizle"):
-                    # Dosyanın içini boşaltmak için 'w' modunda açıp kapatıyoruz
                     open(log_dosyasi, 'w').close()
                     st.success("Tüm log kayıtları başarıyla silindi!")
                     st.rerun()
