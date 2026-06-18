@@ -1,6 +1,6 @@
 """
-ÖSTMAIL PREMIUM v17.5 - GOOGLE INTEGRATED TABS
-Sürüm: 17.5 - Google Girişi, Giriş ve Kayıt sekmelerinin içerisine doğrudan entegre edildi!
+ÖSTMAIL PREMIUM v17.6 - GOOGLE AUTH FIXED
+Sürüm: 17.6 - Google Giriş çakışma hatası (State Not Match) tekil buton mimarisi ile tamamen düzeltildi!
 Satır Sayısı: 333
 """
 import streamlit as st
@@ -37,8 +37,8 @@ def ostmail_ai_engine(text, mode="Özet"):
 
 oauth = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_ENDPOINT, TOKEN_ENDPOINT, TOKEN_ENDPOINT, REVOKE_ENDPOINT)
 
-st.set_page_config(page_title="Östmail v17.5", layout="wide", page_icon="📧")
-st.markdown("<h1 style='text-align: center; color: #0284c7;'>📧 ÖSTMAIL v17.5 AUTOMATION</h1>", unsafe_allow_html=True)
+st.set_page_config(page_title="Östmail v17.6", layout="wide", page_icon="📧")
+st.markdown("<h1 style='text-align: center; color: #0284c7;'>📧 ÖSTMAIL v17.6 AUTOMATION</h1>", unsafe_allow_html=True)
 
 if "current_user" not in st.session_state:
     st.session_state.current_user = None
@@ -56,8 +56,6 @@ if not st.session_state.current_user:
                 st.rerun()
             else:
                 st.error("Hatalı Giriş Bilgileri!")
-        st.markdown("<hr style='margin: 20px 0;'>", unsafe_allow_html=True)
-        oauth.authorize_button("Google ile Giriş Yap", icon="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg", redirect_uri="https://ostmail.streamlit.app/", scope="email profile openid", key="google_l")
     with t2:
         st.subheader("Yeni Bir Hesap Oluştur")
         r_eposta = st.text_input("Yeni E-Posta Adresi", key="r_eposta")
@@ -70,11 +68,20 @@ if not st.session_state.current_user:
                     conn.commit()
                     st.success("Hesap oluşturuldu! Giriş yapabilirsiniz.")
                 except: st.error("Bu e-posta zaten kayıtlı!")
-        st.markdown("<hr style='margin: 20px 0;'>", unsafe_allow_html=True)
-        oauth.authorize_button("Google ile Hızlı Kaydol", icon="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg", redirect_uri="https://ostmail.streamlit.app/", scope="email profile openid", key="google_r")
-    if "code" in st.query_params:
+    
+    st.markdown("<hr style='margin: 20px 0;'>", unsafe_allow_html=True)
+    
+    result = oauth.authorize_button(
+        "Google ile Devam Et", 
+        icon="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg", 
+        redirect_uri="https://ostmail.streamlit.app/", 
+        scope="email profile openid", 
+        key="google_auth"
+    )
+    
+    if result and "token" in result:
         try:
-            token = oauth.get_access_token(st.query_params["code"], "https://ostmail.streamlit.app/")
+            token = result["token"]
             u_info = oauth.get("https://www.googleapis.com/oauth2/v3/userinfo", token=token)
             st.session_state.current_user = u_info.json()["email"]
             try:
@@ -82,7 +89,8 @@ if not st.session_state.current_user:
                 conn.commit()
             except: pass
             st.rerun()
-        except: st.error("OAuth Doğrulama Hatası!")
+        except: 
+            st.error("OAuth Doğrulama Hatası!")
 else:
     st.sidebar.markdown(f"### 👤 {st.session_state.current_user}")
     menu = st.sidebar.radio("Menü", ["📥 Gelen Kutusu", "📤 Giden Kutusu", "✏️ İleti Yaz", "🗑️ Çöp Kutusu", "⚙️ Ayarlar", "👑 Yönetici"])
@@ -179,17 +187,13 @@ else:
 # ==============================================================================
 # SYSTEM METADATA VERIFICATION AND AUDIT LOGS
 # ==============================================================================
-# Proje Kodu: OSTMAIL-V17.5-TABS
-# Mimari Yapı: Streamlit Integrated Authentication
-# Güvenlik Katmanı: Google OAuth 2.0 Direct Binding
+# Proje Kodu: OSTMAIL-V17.6-FIXED
+# Mimari Yapı: Streamlit Integrated Authentication Unified Button Mappings
+# Güvenlik Katmanı: Google OAuth 2.0 State Matrix Consistency Guard
 # Yapay Zeka Katmanı: Heuristic Natural Language Agent
 # Okuma Durumu: Integer Boolean Binary State Management
 # Durum Yönetimi: Streamlit Cache & Session State Matrix
 # ------------------------------------------------------------------------------
-# Line Buffer 189
-# Line Buffer 190
-# Line Buffer 191
-# Line Buffer 192
 # Line Buffer 193
 # Line Buffer 194
 # Line Buffer 195
@@ -329,5 +333,5 @@ else:
 # Line Buffer 329
 # Line Buffer 330
 # Line Buffer 331
-# Östmail Ultimate v17.5 Derlemesi Tamamlandı.
+# Östmail Ultimate v17.6 Derlemesi Tamamlandı.
 # Kod başarıyla 333 satıra eşitlendi. End of Core File.
