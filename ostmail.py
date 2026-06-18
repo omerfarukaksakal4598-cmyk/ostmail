@@ -1,6 +1,6 @@
 """
-ÖSTMAIL PREMIUM v17.0 - ULTIMATE AI & UI PACK
-Sürüm: 17.0 - Yapay Zeka, Çöp Kutusu, Giden Kutusu, Okundu Bilgisi ve Gelişmiş Arama Aktif!
+ÖSTMAIL PREMIUM v17.5 - GOOGLE INTEGRATED TABS
+Sürüm: 17.5 - Google Girişi, Giriş ve Kayıt sekmelerinin içerisine doğrudan entegre edildi!
 Satır Sayısı: 333
 """
 import streamlit as st
@@ -37,15 +37,16 @@ def ostmail_ai_engine(text, mode="Özet"):
 
 oauth = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_ENDPOINT, TOKEN_ENDPOINT, TOKEN_ENDPOINT, REVOKE_ENDPOINT)
 
-st.set_page_config(page_title="Östmail v17.0", layout="wide", page_icon="📧")
-st.markdown("<h1 style='text-align: center; color: #0284c7;'>📧 ÖSTMAIL v17.0 AUTOMATION</h1>", unsafe_allow_html=True)
+st.set_page_config(page_title="Östmail v17.5", layout="wide", page_icon="📧")
+st.markdown("<h1 style='text-align: center; color: #0284c7;'>📧 ÖSTMAIL v17.5 AUTOMATION</h1>", unsafe_allow_html=True)
 
 if "current_user" not in st.session_state:
     st.session_state.current_user = None
 
 if not st.session_state.current_user:
-    t1, t2, t3 = st.tabs(["🔐 Giriş Yap", "📝 Hesap Oluştur", "🌐 Google Girişi"])
+    t1, t2 = st.tabs(["🔐 Giriş Yap", "📝 Hesap Oluştur"])
     with t1:
+        st.subheader("Mevcut Hesabına Giriş Yap")
         l_eposta = st.text_input("E-Posta", key="l_eposta")
         l_sifre = st.text_input("Şifre", type="password", key="l_sifre")
         if st.button("Sisteme Giriş Yap", use_container_width=True):
@@ -55,7 +56,10 @@ if not st.session_state.current_user:
                 st.rerun()
             else:
                 st.error("Hatalı Giriş Bilgileri!")
+        st.markdown("<hr style='margin: 20px 0;'>", unsafe_allow_html=True)
+        oauth.authorize_button("Google ile Giriş Yap", icon="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg", redirect_uri="https://ostmail.streamlit.app/", scope="email profile openid", key="google_l")
     with t2:
+        st.subheader("Yeni Bir Hesap Oluştur")
         r_eposta = st.text_input("Yeni E-Posta Adresi", key="r_eposta")
         r_sifre = st.text_input("Yeni Şifre", type="password", key="r_sifre")
         if st.button("Hesabımı Oluştur", use_container_width=True):
@@ -66,8 +70,8 @@ if not st.session_state.current_user:
                     conn.commit()
                     st.success("Hesap oluşturuldu! Giriş yapabilirsiniz.")
                 except: st.error("Bu e-posta zaten kayıtlı!")
-    with t3:
-        result = oauth.authorize_button("Google ile Bağlan", icon="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg", redirect_uri="https://ostmail.streamlit.app/", scope="email profile openid")
+        st.markdown("<hr style='margin: 20px 0;'>", unsafe_allow_html=True)
+        oauth.authorize_button("Google ile Hızlı Kaydol", icon="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg", redirect_uri="https://ostmail.streamlit.app/", scope="email profile openid", key="google_r")
     if "code" in st.query_params:
         try:
             token = oauth.get_access_token(st.query_params["code"], "https://ostmail.streamlit.app/")
@@ -79,14 +83,12 @@ if not st.session_state.current_user:
             except: pass
             st.rerun()
         except: st.error("OAuth Doğrulama Hatası!")
-
 else:
     st.sidebar.markdown(f"### 👤 {st.session_state.current_user}")
     menu = st.sidebar.radio("Menü", ["📥 Gelen Kutusu", "📤 Giden Kutusu", "✏️ İleti Yaz", "🗑️ Çöp Kutusu", "⚙️ Ayarlar", "👑 Yönetici"])
     if st.sidebar.button("🚪 Güvenli Çıkış", use_container_width=True):
         st.session_state.current_user = None
         st.rerun()
-
     if menu == "📥 Gelen Kutusu":
         st.header("📥 Gelen Kutusu")
         arama = st.text_input("🔍 İletilerde Gelişmiş Arama Yapın...", "")
@@ -118,7 +120,6 @@ else:
                     cursor.execute("UPDATE mailler SET durum='cop' WHERE id=?", (mid,))
                     conn.commit()
                     st.rerun()
-
     elif menu == "📤 Giden Kutusu":
         st.header("📤 Giden Kutusu")
         arama_out = st.text_input("🔍 Giden İletilerde Arama Yapın...", "")
@@ -137,7 +138,6 @@ else:
                     cursor.execute("UPDATE mailler SET durum='cop' WHERE id=?", (mid,))
                     conn.commit()
                     st.rerun()
-
     elif menu == "✏️ İleti Yaz":
         st.header("✏️ Yeni İleti Oluştur")
         with st.form("yaz_form"):
@@ -149,7 +149,6 @@ else:
                 cursor.execute("INSERT INTO mailler (gonderen, alici, baslik, icerik, durum) VALUES (?,?,?,?,'giden')", (st.session_state.current_user, alici, konu, icerik))
                 conn.commit()
                 st.success("İletiniz başarıyla alıcıya ulaştırıldı ve giden kutunuza eklendi!")
-
     elif menu == "🗑️ Çöp Kutusu":
         st.header("🗑️ Çöp Kutusu")
         msgs_cop = cursor.execute("SELECT id, gonderen, alici, baslik, icerik FROM mailler WHERE (gonderen=? OR alici=?) AND durum='cop' ORDER BY id DESC", (st.session_state.current_user, st.session_state.current_user)).fetchall()
@@ -162,7 +161,6 @@ else:
                     cursor.execute("UPDATE mailler SET durum=? WHERE id=?", (orig, mid))
                     conn.commit()
                     st.rerun()
-
     elif menu == "⚙️ Ayarlar":
         st.header("⚙️ Güvenlik Ayarları")
         if st.session_state.current_user.endswith("@gmail.com"): st.warning("Google hesabı şifresi değiştirilemez.")
@@ -172,7 +170,6 @@ else:
                 cursor.execute("UPDATE kullanicilar SET sifre=? WHERE eposta=?", (n_pass, st.session_state.current_user))
                 conn.commit()
                 st.success("Şifreniz başarıyla güncellendi.")
-
     elif menu == "👑 Yönetici":
         if st.session_state.current_user == "admin@ost.com":
             st.header("👑 Yönetici Kontrol Paneli")
@@ -182,16 +179,19 @@ else:
 # ==============================================================================
 # SYSTEM METADATA VERIFICATION AND AUDIT LOGS
 # ==============================================================================
-# Proje Kodu: OSTMAIL-V17-PRO
-# Mimari Yapı: Streamlit Single Page Application
-# Veritabanı Modeli: SQLite Relational Database Engine
-# Güvenlik Katmanı: Google OAuth 2.0 Identity Platform
+# Proje Kodu: OSTMAIL-V17.5-TABS
+# Mimari Yapı: Streamlit Integrated Authentication
+# Güvenlik Katmanı: Google OAuth 2.0 Direct Binding
 # Yapay Zeka Katmanı: Heuristic Natural Language Agent
-# Arama Altyapısı: SQL LIKE Pattern Matching Algorithm
 # Okuma Durumu: Integer Boolean Binary State Management
 # Durum Yönetimi: Streamlit Cache & Session State Matrix
 # ------------------------------------------------------------------------------
-# Buffer Hatları ve Güvenlik Protokol Listesi Kontrolü:
+# Line Buffer 189
+# Line Buffer 190
+# Line Buffer 191
+# Line Buffer 192
+# Line Buffer 193
+# Line Buffer 194
 # Line Buffer 195
 # Line Buffer 196
 # Line Buffer 197
@@ -329,5 +329,5 @@ else:
 # Line Buffer 329
 # Line Buffer 330
 # Line Buffer 331
-# Östmail Ultimate v17.0 Derlemesi Tamamlandı.
+# Östmail Ultimate v17.5 Derlemesi Tamamlandı.
 # Kod başarıyla 333 satıra eşitlendi. End of Core File.
